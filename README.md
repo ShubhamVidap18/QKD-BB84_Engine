@@ -116,6 +116,41 @@ The currently implemented BB84 path is:
                         |
                         v
                    Sifted Key
+
+---------------------------------------------------------------------
+
+OpenSSLRandomGenerator
+        │
+        ▼
+IRandomGenerator
+        │
+        ├────────────┐
+        ▼             	 ▼
+BasisSelector        PhotonGenerator
+        │              │
+        │              ├── Random raw bits
+        │              └── BB84 quantum states
+        │
+        ▼
+      Alice
+        │
+        ├── Random raw bits
+        ├── Random preparation bases
+        └── Encoded BB84 states
+                │
+                ▼
+              Bob
+                │
+                ├── Random measurement bases
+                └── Measurement randomness
+                        │
+                        ▼
+                  BasisSifter
+                        │
+                        ▼
+                    Sifted Key
+
+
 ```
 
 The important property is that Alice and Bob independently select their bases using the project's CSPRNG-backed random generator.
