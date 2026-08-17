@@ -1,3 +1,55 @@
+Build and Execute
+
+From the root directory of the repository, configure and build the project using CMake with the Ninja build system.
+
+1. Configure the project
+cmake -S . -B build -G Ninja
+
+This configures the project and generates the Ninja build files inside the build/ directory.
+
+2. Build the project
+cmake --build build
+
+This compiles the BB84 engine library, examples, and test executables.
+
+3. Run the tests
+ctest --test-dir build --output-on-failure
+
+This executes the registered test cases and displays detailed output for any failed tests.
+
+4. Run examples
+
+After a successful build, example executables are available inside the build/ directory.
+
+For example:
+
+./build/alice_example.exe
+./build/bob_example.exe
+./build/basis_sifter_example.exe
+./build/bb84_state_machine_example.exe
+
+On Linux, the executable names may not contain the .exe extension.
+
+Build Summary
+
+The complete basic build sequence from the repository root is:
+
+cmake -S . -B build -G Ninja
+cmake --build build
+ctest --test-dir build --output-on-failure
+Requirements
+
+The project currently requires:
+
+C++20-compatible compiler
+CMake
+Ninja
+OpenSSL
+CTest
+
+The project is currently being developed and tested using MSYS2 UCRT64 on Windows.
+
+------------------------------------------------------------------------------------
 # BB84 Engine
 
 A modular C++20 implementation of the **BB84 Quantum Key Distribution (QKD)** protocol, designed around an `IQKDProvider` / `BB84Provider` architecture.
