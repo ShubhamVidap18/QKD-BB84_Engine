@@ -1,4 +1,4 @@
-Build and Execute
+# Build and Execute
 
 From the root directory of the repository, configure and build the project using CMake with the Ninja build system.
 
