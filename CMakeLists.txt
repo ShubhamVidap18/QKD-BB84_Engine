@@ -28,6 +28,7 @@ add_library(bb84-engine
     src/Bob.cpp
     src/BasisSifter.cpp
     src/QuantumChannel.cpp
+    src/QBER.cpp
 )
 
 
@@ -100,14 +101,15 @@ target_link_libraries(bb84_state_machine_test
 # BB84 State Machine Example
 # ============================================================
 
-# add_executable(bb84_state_machine_example
-#    examples/state_machine_example.cpp
-# )
 
-# target_link_libraries(bb84_state_machine_example
-#     PRIVATE
-#         bb84-engine
-# )
+#add_executable(bb84_state_machine_example
+#    examples/state_machine_example.cpp
+#)
+
+#target_link_libraries(bb84_state_machine_example
+#    PRIVATE
+#        bb84-engine)
+
 
 # --------------------------------------------------
 # BasisSelector test
@@ -234,6 +236,52 @@ ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 
 # ============================================================
+# QBER 
+# ============================================================
+
+add_executable(
+    qber_test
+    tests/test_QBER.cpp
+)
+
+target_link_libraries(
+    qber_test
+    PRIVATE
+    bb84-engine
+)
+
+add_executable(qber_example
+examples/qber_example.cpp
+)
+
+target_link_libraries(qber_example
+PRIVATE
+bb84-engine
+)
+
+target_include_directories(qber_example
+PRIVATE
+${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+
+# ============================================================
+# Alice to Bob Pipeline Example
+# ============================================================
+
+add_executable(alice_to_bob_pipeline_example
+examples/alice_to_bob_pipeline_example.cpp
+)
+
+target_link_libraries(alice_to_bob_pipeline_example
+PRIVATE
+bb84-engine
+)
+
+target_include_directories(alice_to_bob_pipeline_example
+PRIVATE
+${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# ============================================================
 # Testing
 # ============================================================
 
@@ -279,4 +327,9 @@ add_test(
 add_test(
     NAME quantum_channel_test
     COMMAND quantum_channel_test
+)
+
+add_test(
+    NAME qber_test
+    COMMAND qber_test
 )
