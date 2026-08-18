@@ -1,0 +1,109 @@
+# Dependencies created so far
+
+IRandomGenerator.hpp
+        │
+        │ implemented by
+        ▼
+OpenSSLRandomGenerator.hpp
+        │
+        │ provides CSPRNG
+        ├────────────────────────┐
+        │                               │
+        ▼                               ▼
+BasisSelector.hpp                 PhotonGenerator.hpp
+        │                               │
+        │ uses                        │ defines
+        │                               ▼
+        │                         BB84Basis
+        │                         BB84State
+        │                               │
+        │                               │
+        │                  ┌─────────┴──────────┐
+        │                  │                          │
+        ▼                  ▼                         ▼
+BasisSelector.cpp     Alice.hpp                    Bob.hpp
+                           │                         │
+                           │ uses                    │ uses
+                           ▼                         ▼
+                     Alice.cpp                  Bob.cpp
+                           │                         │
+                           │ prepares                │ measures
+                           │                         │
+                           └──────┐    ┌────────┘
+                                    ▼    ▼
+                                QuantumChannel
+                                      │
+                                      │ transports
+                                      │ BB84State
+                                      ▼
+                                     Bob
+                                      │
+                                      ▼
+                                MeasurementResult
+                                      │
+                                      ▼
+                                BasisSifter.hpp
+                                      │
+                                      │ uses
+                                      │ BB84Basis
+                                      │ Alice raw bits
+                                      │ Bob measurements
+                                      │ Bob bases
+                                      ▼
+                                BasisSifter.cpp
+                                      │
+                                      ▼
+                                  Sifted Key
+
+
+-----------------------------------------------------------------------------------
+
+
+Include/
+
+Sifting.hpp: Placeholder module; planned for sifting stage; no implementation yet; referenced by examples.
+QuantumChannel.hpp: Defines QuantumChannel class; ideal/noiseless transmit API transmit(); transmissionCount() tracks sent states.
+ProviderStatus.hpp: enum class ProviderStatus (UNINITIALIZED…SHUTDOWN); toString() constexpr helper; used for provider state machine.
+ProviderError.hpp: ProviderErrorCode enum and ProviderError exception type (derives from std::runtime_error); used for validating state and error propagation.
+PhotonGenerator.hpp: Defines BB84Basis, BB84State, and PhotonGenerator API; depends on IRandomGenerator; provides generateBit, generateBits, generateQuantumState.
+OpenSSLRandomGenerator.hpp: Declaration of OpenSSLRandomGenerator (implements IRandomGenerator); production CSPRNG backed by OpenSSL.
+MeasurementResult.hpp: MeasurementResult and MeasurementBatch structs to hold Bob's measurement bit + basis and batch helpers.
+IRandomGenerator.hpp: Abstract RNG interface with generateBytes(span<uint8_t>); production vs test RNG separation.
+IQKDProvider.hpp: Core provider interface (initialize, openConnection, getKey, closeConnection, getStatus, getQBER, getKeyRate, shutdown); typedefs KeyId and ByteVector.
+Bob.hpp: Bob class declaration: constructs with IRandomGenerator, measure() returns MeasurementBatch, helper methods for basis selection and measurement.
+BB84Provider.hpp: BB84Provider final class implementing IQKDProvider; holds config, mutex, ProviderStatus, active key cache, qber/key_rate fields and private helpers for state transitions and key generation.
+BB84Config.hpp: BB84Config struct with parameters (raw_bit_count, qber_threshold, minimum_key_bytes, key_expiry_seconds, require_authenticated_classical_channel).
+BasisSifter.hpp: BasisSiftResult struct and BasisSifter::sift() static API; deterministic basis reconciliation (retain matching bases).
+BasisSelector.hpp: BasisSelector class using IRandomGenerator to select single/multiple BB84 bases (selectBasis, selectBases).
+
+src/
+
+Sifting.cpp: Placeholder implementation; planned for sifting stage.
+QuantumChannel.cpp: Implements QuantumChannel::transmit() validating states, increments transmissionCount_, returns states unchanged; defensive invalid-state checks.
+PhotonGenerator.cpp: Implements PhotonGenerator methods: uses injected IRandomGenerator to produce bits/bit vectors and map bit+basis → BB84State with validation.
+OpenSSLRandomGenerator.cpp: Uses OpenSSL RAND_priv_bytes_ex(); validates securityStrength, throws on CSPRNG failure; treats failure as security-critical.
+KeyManager.cpp: Placeholder for KeyManager/KMS implementation.
+ClassicalChannel.cpp: Placeholder for authenticated classical-channel implementation.
+Bob.cpp: Implements Bob: basis selection via RNG, measureState() logic (deterministic when basis matches, random when mismatched), and measure() building MeasurementBatch.
+BB84Provider.cpp: Full provider state-machine scaffolding: constructor validation, initialize/openConnection/closeConnection, getKey() state transitions, generateKeyInternal() placeholder using std::random_device (explicitly non-production), shutdown() zeroes key material, helper transitionLocked and requireStateLocked.
+BasisSifter.cpp: Implements BasisSifter::sift(): validates input sizes/bits, computes matching indices, retained/discarded counts, and populates alice/bob sifted keys.
+BasisSelector.cpp: Implements basis selection: single-bit and multi-bit selection using CSPRNG bytes, bit extraction LSB→MSB.
+Alice.cpp: Implements Alice API: generate raw bits, select bases (delegates to PhotonGenerator/BasisSelector), encode() maps bits+bases → AliceTransmission, prepareTransmission() combines steps.
+
+tests/
+
+test_QuantumChannel.cpp: Unit tests for QuantumChannel: empty/single/all-states transmissions, integrity and count checks, invalid-state defense.
+test_PhotonGenerator.cpp: Tests PhotonGenerator RNG-driven bit generation, multi-bit extraction ordering, and mapping to BB84State, plus invalid-bit rejection.
+test_OpenSSLRandomGenerator.cpp: Sanity tests for OpenSSLRandomGenerator: fills buffers, checks repeated calls differ, handles empty buffer.
+test_Bob.cpp: Tests Bob measurement behavior across matching/mismatched bases and multiple measurements using deterministic test RNG.
+test_bb84_state_machine.cpp: Exercises BB84Provider lifecycle: UNINITIALIZED → INITIALIZED → READY → KEY_AVAILABLE → back to INITIALIZED → SHUTDOWN, and verifies shutdown idempotence and error on reinitialize after shutdown.
+test_BasisSifter.cpp: Verifies retained indices, discarded events, input-size validation, and invalid-bit rejection for BasisSifter.
+test_BasisSelector.cpp: Tests deterministic selection of bases (single and multi) and RNG failure propagation using a deterministic test RNG.
+test_Alice.cpp: Tests Alice::encode() correctness and input-size mismatch error handling using deterministic RNG.
+
+examples/
+
+quantum_channel_example.cpp: Full Alice→QuantumChannel→Bob→Sifting demo: prepares transmissions, transmits, measures, sifts, and prints tables and validations; uses OpenSSL RNG and other components.
+bob_example.cpp: Simple demo of Bob measurement pipeline using fixed received states and printing basis/measurement.
+basis_sifter_example.cpp: Demonstrates basis-sifting stage end-to-end with generated transmissions and prints sifted keys and validation results.
+alice_example.cpp: (not explicitly opened but present) likely demonstrates Alice preparation/encoding API for manual inspection and quick runs.
