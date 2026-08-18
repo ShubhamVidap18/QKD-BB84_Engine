@@ -128,36 +128,53 @@ The currently implemented BB84 path is:
 
 ---------------------------------------------------------------------
 
-OpenSSLRandomGenerator
-        │
-        ▼
-IRandomGenerator
-        │
-        ├────────────┐
-        ▼             	 ▼
-BasisSelector        PhotonGenerator
-        │              │
-        │              ├── Random raw bits
-        │              └── BB84 quantum states
-        │
-        ▼
-      Alice
-        │
-        ├── Random raw bits
-        ├── Random preparation bases
-        └── Encoded BB84 states
-                │
-                ▼
-              Bob
-                │
-                ├── Random measurement bases
-                └── Measurement randomness
-                        │
-                        ▼
-                  BasisSifter
-                        │
-                        ▼
-                    Sifted Key
+                    OpenSSLRandomGenerator
+                              │
+                              ▼
+                       IRandomGenerator
+                              │
+                    ┌─────────┴─────────┐
+                    │                   │
+                    ▼                   ▼
+             BasisSelector       PhotonGenerator
+                    │                   │
+                    │                   ├── Random raw bits
+                    │                   └── BB84 quantum states
+                    │
+                    ▼
+                  Alice
+                    │
+                    ├── Random raw bits
+                    ├── Random preparation bases
+                    └── Encoded BB84 states
+                              │
+                              ▼
+                       ┌─────────────────┐
+                       │ QuantumChannel  │
+                       │                 │
+                       │  Alice → Bob    │
+                       │                 │
+                       │ Ideal channel   │
+                       │ simulation      │
+                       └─────┬───────────┘
+                             │
+                             ▼
+                           Bob
+                             │
+                             ├── Random measurement bases
+                             ├── Quantum-state measurement
+                             └── Measurement results
+                                      │
+                                      ▼
+                                BasisSifter
+                                      │
+                                      ├── Compare Alice/Bob bases
+                                      ├── Retain matching-basis events
+                                      └── Discard mismatched events
+                                      │
+                                      ▼
+                                  Sifted Key
+
 
 
 ```
