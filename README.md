@@ -23,10 +23,19 @@ After a successful build, example executables are available inside the build/ di
 
 For example:
 
+./build/alice_to_bob_pipeline_example.exe
 ./build/alice_example.exe
+./build/alice_test.exe
 ./build/bob_example.exe
+./build/basis_selector_test.exe
 ./build/basis_sifter_example.exe
-./build/bb84_state_machine_example.exe
+./build/bob_test.exe
+./build/openssl_random_generator_test.exe
+./build/photon_generator_test.exe
+./build/qber_example.exe
+./build/qber_test.exe
+./build/quantum_channel_test.exe
+./build/quantum_channel_example.exe
 
 On Linux, the executable names may not contain the .exe extension.
 
@@ -37,8 +46,8 @@ The complete basic build sequence from the repository root is:
 cmake -S . -B build -G Ninja
 cmake --build build
 ctest --test-dir build --output-on-failure
-Requirements
 
+Requirements:
 The project currently requires:
 
 C++20-compatible compiler
