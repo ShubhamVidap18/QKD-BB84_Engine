@@ -79,7 +79,7 @@ ByteVector BB84Provider::getKey(const KeyId& key_id) {
 
         // The actual implementation will first query KeyManager/KMS here.
         // If no valid key exists, key generation is started internally.
-        status_ = ProviderStatus::KEY_GENERATION;
+        //status_ = ProviderStatus::KEY_GENERATION;
     }
 
     try {
@@ -117,7 +117,7 @@ ByteVector BB84Provider::generateKeyInternal(const KeyId& key_id) {
         std::lock_guard lock(mutex_);
 
         // A failed/aborted session must never publish partial key material.
-        if (status_ != ProviderStatus::KEY_GENERATION) {
+        if (status_ != ProviderStatus::READY) {
             throw ProviderError(
                 ProviderErrorCode::INVALID_STATE,
                 "Key generation state changed unexpectedly");
