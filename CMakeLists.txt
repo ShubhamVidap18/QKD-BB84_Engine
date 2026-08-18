@@ -27,6 +27,7 @@ add_library(bb84-engine
     src/Alice.cpp
     src/Bob.cpp
     src/BasisSifter.cpp
+    src/QuantumChannel.cpp
 )
 
 
@@ -202,6 +203,36 @@ target_include_directories(basis_sifter_example
 PRIVATE
 ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+
+# --------------------------------------------------
+# QuantumChannel  
+# --------------------------------------------------
+
+add_executable(
+    quantum_channel_test
+    tests/test_QuantumChannel.cpp
+)
+
+target_link_libraries(
+    quantum_channel_test
+    PRIVATE
+    bb84-engine
+)
+
+add_executable(quantum_channel_example
+examples/quantum_channel_example.cpp
+)
+
+target_link_libraries(quantum_channel_example
+PRIVATE
+bb84-engine
+)
+
+target_include_directories(quantum_channel_example
+PRIVATE
+${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+
 # ============================================================
 # Testing
 # ============================================================
@@ -243,4 +274,9 @@ add_test(
 add_test(
     NAME basis_sifter_test
     COMMAND basis_sifter_test
+)
+
+add_test(
+    NAME quantum_channel_test
+    COMMAND quantum_channel_test
 )
