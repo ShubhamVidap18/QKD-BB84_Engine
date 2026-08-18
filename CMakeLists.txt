@@ -100,14 +100,14 @@ target_link_libraries(bb84_state_machine_test
 # BB84 State Machine Example
 # ============================================================
 
-add_executable(bb84_state_machine_example
-    examples/state_machine_example.cpp
-)
+# add_executable(bb84_state_machine_example
+#    examples/state_machine_example.cpp
+# )
 
-target_link_libraries(bb84_state_machine_example
-    PRIVATE
-        bb84-engine
-)
+# target_link_libraries(bb84_state_machine_example
+#     PRIVATE
+#         bb84-engine
+# )
 
 # --------------------------------------------------
 # BasisSelector test
