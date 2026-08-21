@@ -1,10 +1,21 @@
 #include "QuantumChannel.hpp"
 
+#include <algorithm>
+#include <random>
 #include <stdexcept>
 
+/*
+ * =========================================================
+ * TRANSMISSION
+ * =========================================================
+ */
 std::vector<BB84State> QuantumChannel::transmit(
     const std::vector<BB84State>& states) const
 {
+    /*
+     * Validate every incoming BB84 state before performing
+     * any channel transformation.
+     */
     for (const BB84State state : states)
     {
         switch (state)
@@ -23,11 +34,17 @@ std::vector<BB84State> QuantumChannel::transmit(
     }
 
     transmissionCount_ += states.size();
-
     return states;
 }
 
-std::size_t QuantumChannel::transmissionCount() const noexcept
+/*
+ * =========================================================
+ * TRANSMISSION COUNTER
+ * =========================================================
+ */
+
+std::size_t
+QuantumChannel::transmissionCount() const noexcept
 {
     return transmissionCount_;
 }
