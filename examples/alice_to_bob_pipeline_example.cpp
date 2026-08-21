@@ -6,6 +6,9 @@
 #include "PhotonGenerator.hpp"
 #include "QBER.hpp"
 #include "QuantumChannel.hpp"
+#include "ErrorReconciliation.hpp"
+#include "AuthenticatedClassicalChannel.hpp"
+#include "ErrorReconciliation.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -118,7 +121,7 @@ int main()
 {
     try
     {
-        constexpr std::size_t stateCount = 8U;
+        constexpr std::size_t stateCount = 32U;
 
         /*
          * =========================================================
@@ -290,7 +293,7 @@ int main()
             << "[3] Transmitting BB84 states through "
                "QuantumChannel...\n";
 
-        const std::vector<BB84State> receivedStates =
+        std::vector<BB84State> receivedStates =
             quantumChannel.transmit(
                 preparedStates
             );
@@ -306,24 +309,98 @@ int main()
             << '\n';
 
         /*
-         * Current QuantumChannel implementation is an ideal
-         * noiseless transport model. Therefore the transmitted
-         * and received state sequences must be identical.
-         */
+        # =========================================================
+        * TEST-ONLY QUANTUM ERROR INJECTION
+        * =========================================================
+        * Intentionally introduces two quantum bit errors
+        * before Bob's measurement.
+        */
 
-        const bool channelIntegrity =
-            preparedStates == receivedStates;
+        constexpr bool enableErrorInjection = true;
+
+        constexpr std::size_t errorIndex1 = 0U;
+        constexpr std::size_t errorIndex2 = 1U;
+
+        if (enableErrorInjection)
+        {
+            const std::size_t errorIndices[] =
+            {
+                errorIndex1,
+                errorIndex2
+            };
+
+            for (const std::size_t errorIndex : errorIndices)
+            {
+                if (errorIndex >= receivedStates.size())
+                {
+                    throw std::out_of_range(
+                        "Error injection index is outside "
+                        "received state range"
+                    );
+                }
+
+                switch (receivedStates[errorIndex])
+                {
+                    case BB84State::Zero:
+                        receivedStates[errorIndex] =
+                            BB84State::One;
+                        break;
+
+                    case BB84State::One:
+                        receivedStates[errorIndex] =
+                            BB84State::Zero;
+                        break;
+
+                    case BB84State::Plus:
+                        receivedStates[errorIndex] =
+                            BB84State::Minus;
+                        break;
+
+                    case BB84State::Minus:
+                        receivedStates[errorIndex] =
+                            BB84State::Plus;
+                        break;
+
+                    default:
+                        throw std::invalid_argument(
+                            "Invalid BB84 state during error injection"
+                        );
+                }
+
+                std::cout
+                    << "    TEST MODE : injected quantum error at index "
+                    << errorIndex
+                    << '\n';
+            }
+        }
+
+        const bool statesModified =
+        preparedStates != receivedStates;
+
+        bool channelValidationPassed = false;
+
+        if (enableErrorInjection)
+        {
+            channelValidationPassed = statesModified;
+        }
+        else
+        {
+            channelValidationPassed =
+                preparedStates == receivedStates;
+        }
+
 
         std::cout
             << "    Channel integrity  : "
-            << (channelIntegrity ? "PASSED" : "FAILED")
+            << (channelValidationPassed
+                    ? "PASSED"
+                    : "FAILED")
             << "\n\n";
 
-        if (!channelIntegrity)
+        if (!channelValidationPassed)
         {
             std::cerr
-                << "ERROR: Quantum channel integrity "
-                   "validation failed.\n";
+                << "ERROR: Quantum channel validation failed.\n";
 
             return 1;
         }
@@ -446,8 +523,7 @@ int main()
          * STEP 7 — BASIS SIFTING
          * =========================================================
          *
-         * BasisSifter performs deterministic classical
-         * reconciliation.
+         * BasisSifter performs deterministic classical reconciliation.
          *
          * Same basis:
          *      RETAIN
@@ -459,13 +535,52 @@ int main()
         std::cout
             << "[5] Performing BB84 basis sifting...\n";
 
-        const BasisSiftResult sifted =
+         BasisSiftResult sifted =
             BasisSifter::sift(
                 aliceBits,
                 aliceBases,
                 bobBits,
                 bobBases
             );
+
+        std::size_t injectedErrorsSurvivingSifting = 0U;
+
+        if (enableErrorInjection)
+        {
+            const std::size_t errorIndices[] =
+            {
+                errorIndex1,
+                errorIndex2
+            };
+
+            for (const std::size_t errorIndex : errorIndices)
+            {
+                const bool basisMatch =
+                    aliceBases[errorIndex] == bobBases[errorIndex];
+
+                if (basisMatch)
+                {
+                    ++injectedErrorsSurvivingSifting;
+                }
+            }
+        }
+
+        std::cout
+            << "  Injected errors surviving sifting : "
+            << injectedErrorsSurvivingSifting
+            << '\n';
+
+       //Do not accept a run where fewer than 2 injected errors survive
+        if (enableErrorInjection &&
+            injectedErrorsSurvivingSifting != 2U)
+        {
+            std::cout
+                << "\nTEST MODE: The two injected errors did not both survive basis sifting.\n";
+
+            std::cout
+                << "TEST MODE: Restart the test run to obtain two retained errors.\n";
+            return 0;
+        }
 
         /*
          * =========================================================
@@ -539,18 +654,6 @@ int main()
          * =========================================================
          * STEP 9 — SIFTING VALIDATION
          * =========================================================
-         *
-         * No hardcoded expected number of retained bits is used.
-         *
-         * The validation is based on structural invariants:
-         *
-         *   retained + discarded == total
-         *
-         *   matchingIndices.size() == retained
-         *
-         *   Alice sifted key size == retained
-         *
-         *   Bob sifted key size == retained
          */
 
         const bool siftingStructureValid =
@@ -617,16 +720,6 @@ int main()
          * =========================================================
          * STEP 10 — QBER ESTIMATION
          * =========================================================
-         *
-         * QBER is calculated only over the sifted key.
-         *
-         * Discarded basis-mismatch events are excluded.
-         *
-         * Important:
-         *
-         * The equality of Alice and Bob's sifted keys is NOT used
-         * as the QBER calculation. QBER independently counts the
-         * bit mismatches.
          */
 
         std::cout
@@ -692,6 +785,78 @@ int main()
             << '\n';
 
         /*
+        * =========================================================
+        * ERROR RECONCILIATION
+        * =========================================================
+        */
+
+        std::cout
+            << "\n[7] Performing authenticated Cascade reconciliation...\n";
+
+        bb84::AuthenticatedClassicalChannel classicalChannel;
+
+        constexpr std::size_t initialBlockSize = 4U;
+        constexpr std::size_t cascadePasses = 4U;
+
+        const bb84::ReconciliationResult reconciliation =
+            bb84::ErrorReconciliation::reconcile(
+                sifted.aliceKey,
+                sifted.bobKey,
+                classicalChannel,
+                initialBlockSize,
+                cascadePasses
+            );
+
+        std::cout
+            << "    Compared bits       : "
+            << reconciliation.comparedBits
+            << '\n';
+
+        std::cout
+            << "    Cascade passes      : "
+            << reconciliation.cascadePasses
+            << '\n';
+
+        std::cout
+            << "    Detected errors     : "
+            << reconciliation.detectedErrors
+            << '\n';
+
+        std::cout
+            << "    Corrected bits      : "
+            << reconciliation.correctedBits
+            << '\n';
+
+        std::cout
+            << "    Parity queries      : "
+            << reconciliation.parityQueries
+            << '\n';
+
+        std::cout
+            << "    Binary searches     : "
+            << reconciliation.binarySearchQueries
+            << '\n';
+
+        std::cout
+            << "    Disclosed bits      : "
+            << reconciliation.disclosedBits
+            << '\n';
+
+        std::cout
+            << "    Authentication      : "
+            << (reconciliation.authenticationPassed
+                    ? "PASSED"
+                    : "FAILED")
+            << '\n';
+
+        std::cout
+            << "    Reconciliation      : "
+            << (reconciliation.success
+                    ? "PASSED"
+                    : "FAILED")
+            << '\n';   
+
+            /*
          * =========================================================
          * STEP 12 — PIPELINE STATUS
          * =========================================================
@@ -714,48 +879,202 @@ int main()
             << "  -> Bob measurement\n"
             << "  -> BasisSifter\n"
             << "  -> Sifted key\n"
-            << "  -> QBER estimation\n";
+            << "  -> QBER estimation\n"
+            << "  -> Error Reconciliation\n";
+
+            /*
+        * =========================================================
+        * FINAL VALIDATION
+        * =========================================================
+        */
 
         /*
-         * =========================================================
-         * FINAL VALIDATION
-         * =========================================================
-         */
-
+        * Verify that QBER was calculated over the complete
+        * sifted key.
+        */
         const bool qberStructureValid =
             qberResult.comparedBits ==
             sifted.aliceKey.size();
 
+        /*
+        * Verify that reconciliation processed the complete
+        * sifted key.
+        */
+        const bool reconciliationStructureValid =
+            reconciliation.comparedBits ==
+            sifted.aliceKey.size();
+
+        /*
+        * Verify that Alice's key was preserved during
+        * reconciliation.
+        *
+        * Alice's key must never be modified by the
+        * reconciliation algorithm.
+        */
+        const bool aliceKeyIntegrityValid =
+            reconciliation.aliceKey ==
+            sifted.aliceKey;
+
+        /*
+        * Verify that Alice and Bob have identical keys
+        * after reconciliation.
+        */
+        const bool keySynchronizationValid =
+            reconciliation.aliceKey ==
+            reconciliation.bobKey;
+
+        /*
+        * Verify authenticated classical communication
+        * and successful reconciliation.
+        */
+        const bool reconciliationPassed =
+            reconciliation.authenticationPassed &&
+            reconciliation.success &&
+            reconciliationStructureValid &&
+            aliceKeyIntegrityValid &&
+            keySynchronizationValid;
+
+        /*
+        * Overall BB84 pipeline validation.
+        */
+        const bool channelIntegrity =
+        enableErrorInjection
+        ? (preparedStates != receivedStates)
+        : (preparedStates == receivedStates);   
+
         const bool pipelinePassed =
             channelIntegrity &&
             siftingStructureValid &&
-            qberStructureValid;
+            qberStructureValid &&
+            reconciliationPassed;
+
+
+        /*
+        * =========================================================
+        * PIPELINE VALIDATION RESULTS
+        * =========================================================
+        */
 
         std::cout
             << "\n------------------------------------------------------------\n";
 
         std::cout
             << "Quantum channel      : "
-            << (channelIntegrity ? "PASSED" : "FAILED")
+            << (channelIntegrity
+                    ? "PASSED"
+                    : "FAILED")
             << '\n';
 
         std::cout
             << "Basis sifting        : "
-            << (siftingStructureValid ? "PASSED" : "FAILED")
+            << (siftingStructureValid
+                    ? "PASSED"
+                    : "FAILED")
             << '\n';
 
         std::cout
             << "QBER structure       : "
-            << (qberStructureValid ? "PASSED" : "FAILED")
+            << (qberStructureValid
+                    ? "PASSED"
+                    : "FAILED")
+            << '\n';
+
+        std::cout
+            << "Classical auth       : "
+            << (reconciliation.authenticationPassed
+                    ? "PASSED"
+                    : "FAILED")
+            << '\n';
+
+        std::cout
+            << "Reconciliation size  : "
+            << (reconciliationStructureValid
+                    ? "PASSED"
+                    : "FAILED")
+            << '\n';
+
+        std::cout
+            << "Alice key integrity  : "
+            << (aliceKeyIntegrityValid
+                    ? "PASSED"
+                    : "FAILED")
+            << '\n';
+
+        std::cout
+            << "Key synchronization  : "
+            << (keySynchronizationValid
+                    ? "PASSED"
+                    : "FAILED")
+            << '\n';
+
+        std::cout
+            << "Error reconciliation : "
+            << (reconciliation.success
+                    ? "PASSED"
+                    : "FAILED")
             << '\n';
 
         std::cout
             << "Complete pipeline    : "
-            << (pipelinePassed ? "PASSED" : "FAILED")
+            << (pipelinePassed
+                    ? "PASSED"
+                    : "FAILED")
             << '\n';
 
         std::cout
             << "------------------------------------------------------------\n";
+
+
+        /*
+        * =========================================================
+        * RECONCILIATION STATISTICS
+        * =========================================================
+        */
+
+        std::cout
+            << "\nReconciliation statistics:\n";
+
+        std::cout
+            << "  Compared bits       : "
+            << reconciliation.comparedBits
+            << '\n';
+
+        std::cout
+            << "  Cascade passes      : "
+            << reconciliation.cascadePasses
+            << '\n';
+
+        std::cout
+            << "  Detected errors     : "
+            << reconciliation.detectedErrors
+            << '\n';
+
+        std::cout
+            << "  Corrected bits      : "
+            << reconciliation.correctedBits
+            << '\n';
+
+        std::cout
+            << "  Parity queries      : "
+            << reconciliation.parityQueries
+            << '\n';
+
+        std::cout
+            << "  Binary searches     : "
+            << reconciliation.binarySearchQueries
+            << '\n';
+
+        std::cout
+            << "  Disclosed bits      : "
+            << reconciliation.disclosedBits
+            << '\n';
+
+
+        /*
+        * =========================================================
+        * PIPELINE FAILURE HANDLING
+        * =========================================================
+        */
 
         if (!pipelinePassed)
         {
@@ -765,17 +1084,29 @@ int main()
             return 1;
         }
 
+
+        /*
+        * =========================================================
+        * PIPELINE COMPLETED
+        * =========================================================
+        */
+
         std::cout
-            << "\n============================================================\n";
+            << "\n===============================================================================\n";
+
         std::cout
-            << "      ALICE -> QUANTUM CHANNEL -> BOB -> SIFTING -> QBER\n";
+            << " ALICE -> QUANTUM CHANNEL -> BOB -> SIFTING -> QBER -> "
+            "AUTHENTICATED CASCADE RECONCILIATION\n";
+
         std::cout
             << "                  COMPLETED SUCCESSFULLY\n";
-        std::cout
-            << "============================================================\n";
 
-        return 0;
+        std::cout
+            << "===============================================================================\n";
+            
+    return 0;
     }
+
     catch (const std::exception& exception)
     {
         std::cerr
