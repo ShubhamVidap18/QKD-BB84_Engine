@@ -3,36 +3,21 @@
 #include "PhotonGenerator.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 /**
  * @brief Represents the quantum communication channel between
  *        Alice and Bob in the BB84 protocol.
  *
- * The QuantumChannel is responsible only for transporting
- * prepared BB84 quantum states from Alice to Bob.
+ * The channel transports prepared BB84 states.
  *
- * Current implementation:
- *  - Ideal/noiseless channel
- *  - No state transformation
- *  - No eavesdropper
- *  - No attenuation
- *  - No photon loss
- *
- * Future implementations may introduce configurable channel
- * characteristics such as attenuation, loss, polarization
- * errors, noise, or eavesdropping models.
- *
- * Security-sensitive classical information such as Alice's
- * raw bits and preparation bases must never pass through this
- * interface.
  */
-class QuantumChannel {
+class QuantumChannel
+{
 public:
 
-    /**
-     * @brief Construct an ideal BB84 quantum channel.
-     */
+    
     QuantumChannel() = default;
 
     QuantumChannel(const QuantumChannel&) = delete;
@@ -43,31 +28,34 @@ public:
 
     ~QuantumChannel() = default;
 
+
     /**
      * @brief Transmit prepared BB84 states from Alice to Bob.
      *
-     * In the current ideal-channel implementation, every
-     * transmitted state arrives unchanged.
+     * The default channel returns the states unchanged.
+     *
+     * In test mode, controlled channel errors may transform
+     * BB84 states before they reach Bob.
      *
      * @param states BB84 states prepared by Alice.
      *
      * @return States received by Bob.
      *
-     * @throws std::invalid_argument if an invalid BB84 state
-     *         is encountered.
+     * @throws std::invalid_argument if an invalid state or
+     *         channel configuration is encountered.
      */
     [[nodiscard]]
     std::vector<BB84State> transmit(
         const std::vector<BB84State>& states
     ) const;
 
+
     /**
-     * @brief Return the number of states transmitted through
-     *        the channel.
+     * @brief Return the number of states transmitted.
      */
     [[nodiscard]]
     std::size_t transmissionCount() const noexcept;
 
-    private:
+private:
     mutable std::size_t transmissionCount_{0U};
 };
