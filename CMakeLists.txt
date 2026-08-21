@@ -29,6 +29,8 @@ add_library(bb84-engine
     src/BasisSifter.cpp
     src/QuantumChannel.cpp
     src/QBER.cpp
+    src/ErrorReconciliation.cpp
+    src/AuthenticatedClassicalChannel.cpp
 )
 
 
@@ -281,6 +283,41 @@ target_include_directories(alice_to_bob_pipeline_example
 PRIVATE
 ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+
+# ============================================================
+# Error Reconciliation
+# ============================================================
+find_package(GTest REQUIRED)
+add_executable(
+    error_reconciliation_test
+    tests/test_Error_Reconciliation.cpp
+)
+
+target_link_libraries(
+    error_reconciliation_test
+    PRIVATE
+    bb84-engine
+    GTest::gtest_main
+)
+
+include(GoogleTest)
+gtest_discover_tests(error_reconciliation_test)
+
+
+#add_executable(error_reconciliation_example
+#examples/error_reconciliation_example.cpp
+#)
+
+#target_link_libraries(error_reconciliation_example
+#PRIVATE
+#bb84-engine
+#)
+
+#target_include_directories(error_reconciliation_example
+#PRIVATE
+#${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+
 # ============================================================
 # Testing
 # ============================================================
@@ -332,4 +369,9 @@ add_test(
 add_test(
     NAME qber_test
     COMMAND qber_test
+)
+
+add_test(
+    NAME error_reconciliation_test
+    COMMAND error_reconciliation_test
 )
