@@ -98,82 +98,121 @@ The project is intentionally structured so that individual BB84 components can b
 The currently implemented BB84 path is:
 
 ```text
-                    BB84 ENGINE
-                         |
-                         v
-                  OpenSSL CSPRNG
-                         |
-             +-----------+-----------+
-             |                       |
-             v                       v
-          Alice                    Bob
-             |                       |
-     +-------+-------+       +-------+-------+
-     |               |       |               |
- Random raw bits  Random   Random basis   Measurement
-                  bases        |               |
-     |               |         |               |
-     +-------+-------+         +-------+-------+
-             |                         |
-             v                         v
-       BB84 quantum states      Measurement results
-             |                         |
-             +----------+--------------+
-                        |
-                        v
-                   Basis Sifting
-                        |
-                        v
-                   Sifted Key
+                         BB84 ENGINE
+                              |
+                              v
+                       OpenSSL CSPRNG
+                              |
+                 +------------+------------+
+                 |                         |
+                 v                         v
+              ALICE                       BOB
+                 |                         |
+        +--------+--------+       +--------+--------+
+        |                 |       |                 |
+        v                 v       v                 |
+   Random raw bits   Random bases  Random bases     |
+        |                 |             |            |
+        +--------+--------+             |            |
+                 |                      v            |
+                 v                 Quantum Measurement
+          BB84 State Preparation       |
+                 |                     v
+                 |              Measurement Results
+                 |                     |
+                 +----------+----------+
+                            |
+                            v
+                       Quantum Channel
+                            |
+                            v
+                    Basis Sifting
+                            |
+                            v
+                       Sifted Key
+                            |
+                            v
+                    QBER Estimation
+                            |
+                            v
+                 Error Reconciliation
+                   (Authenticated
+                       Cascade)
+                            |
+                            v
+                  Synchronized Secret
+                         Key
 
 ---------------------------------------------------------------------
 
-                    OpenSSLRandomGenerator
-                              │
-                              ▼
-                       IRandomGenerator
-                              │
-                    ┌─────────┴─────────┐
-                    │                   │
-                    ▼                   ▼
-             BasisSelector       PhotonGenerator
-                    │                   │
-                    │                   ├── Random raw bits
-                    │                   └── BB84 quantum states
-                    │
-                    ▼
-                  Alice
-                    │
-                    ├── Random raw bits
-                    ├── Random preparation bases
-                    └── Encoded BB84 states
-                              │
-                              ▼
+                         OpenSSLRandomGenerator
+                                  │
+                                  ▼
+                           IRandomGenerator
+                                  │
+                       ┌──────────┴──────────┐
+                       │                     │
+                       ▼                     ▼
+                BasisSelector         PhotonGenerator
+                       │                     │
+                       │                     ├── Random raw bits
+                       │                     └── BB84 quantum states
+                       │
+                       ▼
+                     Alice
+                       │
+                       ├── Random raw bits
+                       ├── Random preparation bases
+                       └── Encoded BB84 states
+                                  │
+                                  ▼
                        ┌─────────────────┐
                        │ QuantumChannel  │
                        │                 │
-                       │  Alice → Bob    │
+                       │   Alice → Bob   │
                        │                 │
                        │ Ideal channel   │
-                       │ simulation      │
-                       └─────┬───────────┘
-                             │
-                             ▼
-                           Bob
-                             │
-                             ├── Random measurement bases
-                             ├── Quantum-state measurement
-                             └── Measurement results
-                                      │
-                                      ▼
-                                BasisSifter
-                                      │
-                                      ├── Compare Alice/Bob bases
-                                      ├── Retain matching-basis events
-                                      └── Discard mismatched events
-                                      │
-                                      ▼
-                                  Sifted Key
+                       │ / error model   │
+                       └────────┬────────┘
+                                │
+                                ▼
+                              Bob
+                                │
+                                ├── Random measurement bases
+                                ├── Quantum-state measurement
+                                └── Measurement results
+                                         │
+                                         ▼
+                                   BasisSifter
+                                         │
+                                         ├── Compare Alice/Bob bases
+                                         ├── Retain matching-basis events
+                                         └── Discard mismatched events
+                                         │
+                                         ▼
+                                     Sifted Key
+                                         │
+                                         ▼
+                                   QBER Estimator
+                                         │
+                                         ├── Compare Alice/Bob
+                                         ├── Count error bits
+                                         ├── Calculate QBER
+                                         └── Check QBER condition
+                                         │
+                                         ▼
+                              Error Reconciliation
+                                  (Authenticated
+                                     Cascade)
+                                         │
+                                         ├── Parity queries
+                                         ├── Binary searches
+                                         ├── Detect errors
+                                         ├── Correct errors
+                                         └── Authenticate reconciliation
+                                         │
+                                         ▼
+                                Synchronized Key
 
 
 
